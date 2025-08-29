@@ -36,7 +36,7 @@ public class GoodElevatorStatusGetService implements ElevatorStatusGetService {
         Elevator elevator = elevatorRepository.get(elevatorKey);
         return new ElevatorStatusResponseFromApartmentServer(
                 elevator.getElevatorStatus().getCode(),
-                elevator.getDoorStatus().name(),
+                elevator.getDoorStatus().name(),//dd
                 String.valueOf(elevator.getCurrentFloor())
         );
     }
