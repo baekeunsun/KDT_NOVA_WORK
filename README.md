@@ -95,7 +95,7 @@ work.meeting
 ├── mapper
 │   ├── MeetingMapper.java
 │   └── MeetingMapper.xml (단순 Select 쿼리 위주)
-└── dto
+└── model
     ├── MeetingInfoRes.java
     ├── MeetingReportRes.java
     ├── SpeakerStat.java (Comparable 구현 권장)
