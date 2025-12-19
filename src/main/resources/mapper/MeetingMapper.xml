@@ -12,4 +12,26 @@
         WHERE ID = #{meetingId}
     </select>
 
+    <!-- 회의 기본 정보 조회 -->
+    <select id="findById" resultType="MeetingBase">
+        SELECT
+            ID AS id,
+            NAME AS name,
+            STATUS AS status,
+            ATTENDEE_LIST AS attendeeList,
+            AUDIO_URL AS audioUrl,
+            CRT_DTIME AS crtDtime,
+            END_DTIME AS endDtime,
+            CRT_ID AS crtId
+        FROM T_MEETING_BASE
+        WHERE ID = #{meetingId}
+    </select>
+
+    <!-- 공유받은 사용자 수 조회 (COUNT 쿼리 허용) -->
+    <select id="countViewers" resultType="int">
+        SELECT COUNT(*)
+        FROM T_MEETING_VIEWER_MAP
+        WHERE MEETING_ID = #{meetingId}
+    </select>
+
 </mapper>
