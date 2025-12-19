@@ -5,6 +5,7 @@
 
 <mapper namespace="org.example.nova.work.meeting.mapper.MeetingMapper">
 
+    <!-- 회의 이름 조회 -->
     <select id="selectMeetingName" resultType="string">
         SELECT NAME
         FROM T_MEETING_BASE
