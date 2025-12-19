@@ -5,13 +5,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.example.nova.work.meeting.model.MeetingInfoRes;
 import org.example.nova.work.meeting.model.MeetingNameResDTO;
+import org.example.nova.work.meeting.model.SpeakerStat;
 import org.example.nova.work.meeting.service.MeetingReportService;
 import org.example.nova.work.meeting.service.MeetingService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/work/meeting")
@@ -35,5 +35,14 @@ public class MeetingReportController {
     @GetMapping("/{meetingId}")
     public ResponseEntity<MeetingInfoRes> getMeetingInfo(@PathVariable int meetingId) {
         return ResponseEntity.ok(meetingService.getMeetingInfo(meetingId));
+    }
+
+    @Operation(summary = "2번 : 회의 발화자 Top-K 조회")
+    @GetMapping("/{meetingId}/speakers")
+    public ResponseEntity<List<SpeakerStat>> getTopSpeakers(
+            @PathVariable int meetingId,
+            @RequestParam(defaultValue = "3") int limit
+    ) {
+        return ResponseEntity.ok(meetingReportService.getTopSpeakers(meetingId, limit));
     }
 }

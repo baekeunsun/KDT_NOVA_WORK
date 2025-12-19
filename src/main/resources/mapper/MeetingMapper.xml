@@ -34,4 +34,17 @@
         WHERE MEETING_ID = #{meetingId}
     </select>
 
+    <!-- 회의 발화 데이터 조회 -->
+    <select id="findUtterancesByMeetingId" resultType="UtteranceInfo">
+        SELECT
+            ID AS id,
+            MEETING_ID AS meetingId,
+            IDX AS idx,
+            SPEAKER_LABEL AS speakerLabel,
+            SPEAKER_NAME AS speakerName,
+            TEXT AS text
+        FROM T_MEETING_UTTERANCE_INFO
+        WHERE MEETING_ID = #{meetingId}
+    </select>
+
 </mapper>
