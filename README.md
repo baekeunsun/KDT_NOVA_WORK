@@ -43,13 +43,13 @@
 
 #### 2️⃣ 회의 발화자 Top-K 조회 API (`GET /work/meeting/{meetingId}/speakers`)
 
-회의 내 발화 데이터를 분석하여 상위 발화자를 추출합니다. (일반 정렬 활용)
+회의 내 발화 데이터를 분석하여 상위 발화자를 추출합니다.
 
 * **Query Parameter**: `limit` (상위 발화자 수, 기본값: 3)
 
 #### 3️⃣ 회의 키워드 Top-K 조회 API (`GET /work/meeting/{meetingId}/keywords`)
 
-회의 내 발화 텍스트에서 상위 키워드를 추출합니다. (우선순위 큐 활용)
+회의 내 발화 텍스트에서 상위 키워드를 추출합니다.
 
 * **Query Parameter**: `limit` (상위 키워드 수, 기본값: 5)
 
@@ -203,7 +203,7 @@ public class MeetingController {
 
 ---
 
-## 📗 API 2번: 발화자 Top-K 분석 (일반 정렬)
+## 📗 API 2번: 발화자 Top-K 분석
 
 ### 단계별 구현 가이드
 
@@ -222,7 +222,7 @@ import lombok.Data;
 
 @Data
 public class UtteranceInfo {
-    // 발화 데이터에 필요할 것으로 추정되는 파라미터들을 적어주세요.
+    // TODO : 발화 데이터에 필요할 것으로 추정되는 파라미터들을 적어주세요.
 }
 ```
 
@@ -420,7 +420,8 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
     // TODO: 7. PriorityQueue로 Top-K 추출하기 (핵심!)
     // 힌트: PriorityQueue<Map.Entry<String, Integer>> pq = new PriorityQueue<>(comparator);
     //       Comparator 만들기:
-    //       1순위: 빈도수 내림차순 (e2.getValue() - e1.getValue())
+    //       1순위: 빈도수 오름차순 (e2.getValue() - e1.getValue())
+    //       왜 오름차순으로 해야하는지 생각해보면 좋습니다!!!
     //       2순위: 키워드 사전순 오름차순 (e1.getKey().compareTo(e2.getKey()))
     
     // TODO: 8. 모든 키워드를 큐에 추가하면서 크기 제한하기
@@ -431,7 +432,7 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
     // TODO: 9. 결과를 List로 변환하기
     // 힌트: while (!pq.isEmpty())로 poll()해서 List에 추가
     
-    // TODO: 10. 역순으로 정렬 (빈도수 높은 것부터)
+    // TODO: 10. 내람차순으로 정렬 (빈도수 높은 것부터)
     // 힌트: Collections.reverse() 사용
 }
 ```

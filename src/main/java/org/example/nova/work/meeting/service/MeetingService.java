@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.nova.work.meeting.mapper.MeetingMapper;
 import org.example.nova.work.meeting.model.MeetingBase;
 import org.example.nova.work.meeting.model.MeetingInfoRes;
-import org.example.nova.work.meeting.model.MeetingNameResDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

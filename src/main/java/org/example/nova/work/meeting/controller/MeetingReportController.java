@@ -3,6 +3,7 @@ package org.example.nova.work.meeting.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.example.nova.work.meeting.model.KeywordStat;
 import org.example.nova.work.meeting.model.MeetingInfoRes;
 import org.example.nova.work.meeting.model.MeetingNameResDTO;
 import org.example.nova.work.meeting.model.SpeakerStat;
@@ -44,5 +45,14 @@ public class MeetingReportController {
             @RequestParam(defaultValue = "3") int limit
     ) {
         return ResponseEntity.ok(meetingReportService.getTopSpeakers(meetingId, limit));
+    }
+
+    @Operation(summary = "3번 : 회의 키워드 Top-K 조회")
+    @GetMapping("/{meetingId}/keywords")
+    public ResponseEntity<List<KeywordStat>> getTopKeywords(
+            @PathVariable int meetingId,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        return ResponseEntity.ok(meetingReportService.getTopKeywords(meetingId, limit));
     }
 }
