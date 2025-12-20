@@ -12,6 +12,7 @@
 
 * **핵심 역량**: Layered Architecture 이해, 복합 정렬 조건 구현, **Top-K 알고리즘(PQ)** 적용.
 * **🚨 0점 방지 체크리스트**:
+* Mapper(XML) 내에서의 **집계(GROUP BY) 및 정렬(ORDER BY)은 절대 금지**합니다.
 * 모든 통계 및 정렬 로직은 **Java Service 레이어**에서 직접 구현해야 합니다.
 * 컴파일 오류 또는 실행 불가 상태는 오답 처리됩니다.
 * **API 3번은 반드시 `PriorityQueue`를 사용해야 합니다.**
@@ -36,18 +37,19 @@
 회의 상세 화면 진입 시 사용되는 기본 정보와 공유받은 사용자의 수를 조회합니다.
 
 * **사용 테이블**: `T_MEETING_BASE`, `T_MEETING_VIEWER_MAP`
-* **구현 내용**: 회의 ID 기준 정보 조회 및 공유받은 사용자의 수 계산(COUNT SQL 허용).
+* **구현 내용**: 회의 ID 기준 정보 조회 및 공유받은 사용자의 수 계산(COUNT SQL 허용),
+* 필수로 보여야하는 값은 회의아이디, 회의 이름, 참석자리스트, 시작시간, 종료시간, 생성자, 공유된 사용자 수
 * **예외 처리**: 회의가 존재하지 않을 경우 적절한 Custom Exception 처리.
 
 #### 2️⃣ 회의 발화자 Top-K 조회 API (`GET /work/meeting/{meetingId}/speakers`)
 
-회의 내 발화 데이터를 분석하여 상위 발화자를 추출합니다. (일반 정렬 활용)
+회의 내 발화 데이터를 분석하여 상위 발화자를 추출합니다.
 
 * **Query Parameter**: `limit` (상위 발화자 수, 기본값: 3)
 
 #### 3️⃣ 회의 키워드 Top-K 조회 API (`GET /work/meeting/{meetingId}/keywords`)
 
-회의 내 발화 텍스트에서 상위 키워드를 추출합니다. (우선순위 큐 활용)
+회의 내 발화 텍스트에서 상위 키워드를 추출합니다.
 
 * **Query Parameter**: `limit` (상위 키워드 수, 기본값: 5)
 
@@ -134,7 +136,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class MeetingInfoRes {
-    // 응답 파라미터를 적어주세요.
+    // TODO: 응답 파라미터를 적어주세요.
 }
 ```
 
@@ -201,7 +203,7 @@ public class MeetingController {
 
 ---
 
-## 📗 API 2번: 발화자 Top-K 분석 (일반 정렬)
+## 📗 API 2번: 발화자 Top-K 분석
 
 ### 단계별 구현 가이드
 
@@ -220,7 +222,7 @@ import lombok.Data;
 
 @Data
 public class UtteranceInfo {
-    // 발화 데이터에 필요할 것으로 추정되는 파라미터들을 적어주세요.
+    // TODO : 발화 데이터에 필요할 것으로 추정되는 파라미터들을 적어주세요.
 }
 ```
 
@@ -229,7 +231,7 @@ public class UtteranceInfo {
 <select id="findUtterancesByMeetingId" resultType="work.meeting.model.UtteranceInfo">
     <!-- TODO: T_MEETING_UTTERANCE_INFO 테이블에서 발화 데이터 조회
          힌트:
-         - SELECT로 필요한 컬럼 조회 (ID, MEETING_ID, IDX, SPEAKER_LABEL, SPEAKER_NAME, TEXT, START_DTIME, END_DTIME)
+         - SELECT로 필요한 컬럼 조회 (ID, MEETING_ID, IDX, SPEAKER_LABEL, SPEAKER_NAME, TEXT)
          - WHERE 절로 MEETING_ID = #{meetingId} 조건 추가
          - ⚠️ 주의: ORDER BY를 쓰지 않습니다! Java에서 정렬할 거예요
     -->
@@ -252,23 +254,16 @@ import lombok.Data;
 public class SpeakerStat {
     private String speakerName;  // 발화자 이름
     private int count;           // 발화 건수
-    private float totalTime;     // 총 발화 시간
     
     // 생성자
     public SpeakerStat(String speakerName) {
         this.speakerName = speakerName;
         this.count = 0;
-        this.totalTime = 0.0f;
     }
     
     // 발화 건수 증가
     public void addCount() {
         this.count++;
-    }
-    
-    // 발화 시간 추가
-    public void addTime(float duration) {
-        this.totalTime += duration;
     }
 }
 ```
@@ -276,9 +271,38 @@ public class SpeakerStat {
 **설명**:
 - 각 발화자의 통계를 담는 클래스
 - `addCount()`: 발화 건수를 1씩 증가
-- `addTime()`: 발화 시간을 누적
+- 발화 건수만 집계하면 됩니다
 
-#### 3단계: Service에서 집계하기
+#### 3단계: 발화자 정렬 기준(Comparator) 만들기
+
+```java
+// SpeakerStatComparator.java
+package work.meeting.model;
+
+import java.util.Comparator;
+
+public class SpeakerStatComparator implements Comparator<SpeakerStat> {
+
+    @Override
+    public int compare(SpeakerStat s1, SpeakerStat s2) {
+        // 힌트
+        // compare() 메서드 안에서 if문으로 순서대로 비교하면 됨
+        // 이 단계에서는 정렬을 실행하지 않음, 기준만 정의하면 됨
+        
+        // TODO: 1. 정렬 1순위 : 발화 건수 오름차순
+        
+        // TODO: 2. 정렬 2순위 : 발화자 이름 오름차순
+    }
+}
+```
+
+**설명**:
+- SpeakerStat 객체를 어떤 기준으로 정렬할지 정의하는 클래스
+- 자바는 우리가 만든 객체를 자동으로 비교하지 못하므로, 정렬 기준을 직접 알려줘야 함
+- 이 Comparator는 이후 Service에서 Collections.sort()에 사용됨
+
+
+#### 4단계: Service에서 집계하기
 
 ```java
 @Service
@@ -288,29 +312,48 @@ public class AnalysisService {
     private MeetingMapper meetingMapper;
     
     public List<SpeakerStat> getTopSpeakers(int meetingId, int limit) {
-        // 1단계: 발화 데이터 모두 가져오기
+        // TODO 1. 발화 데이터 모두 가져오기
         // 힌트: meetingMapper.findUtterancesByMeetingId() 사용
         
-        // 2단계: Map으로 발화자별 집계하기
+        // TODO 2. 발화자별 집계하기
         // 힌트: Map<String, SpeakerStat> speakerMap = new HashMap<>();
         //       for문으로 발화 데이터를 순회하면서:
         //       - 발화자 이름을 키로 사용
         //       - Map에 없으면 새로 만들기 (containsKey() 사용)
         //       - 발화 건수 증가 (addCount() 호출)
-        //       - 발화 시간 계산 (END - START) 후 누적 (addTime() 호출)
+        // 아래 코드로 실행하시면, 정상작동합니다. 어떻게 되는건지 확인해보세요~~
+        Map<String, SpeakerStat> speakerMap = new HashMap<>();
         
-        // 3단계: Map의 값들을 List로 변환하기
-        // 힌트: new ArrayList<>(speakerMap.values())
+        for (UtteranceInfo utterance : utterances) {
+            String speakerName = utterance.getSpeakerName();
+
+            // Map에 없으면 새로 생성
+            if (!speakerMap.containsKey(speakerName)) {
+                speakerMap.put(speakerName, new SpeakerStat(speakerName));
+            }
+
+            // 발화 건수 증가
+            speakerMap.get(speakerName).addCount();
+        }
         
-        // 4단계: 정렬하기 (복합 정렬 기준)
-        // 힌트: Collections.sort() 또는 List.sort() 사용
+        // TODO 3. PriorityQueue 생성 (⭐ 핵심)
+        // 힌트: 
         //       Comparator를 만들어서:
-        //       1순위: 발화 건수 내림차순 (s2.getCount() - s1.getCount())
-        //       2순위: 발화 시간 내림차순 (Float.compare() 사용)
-        //       3순위: 이름 오름차순 (compareTo() 사용)
-        
-        // 5단계: 상위 limit 개만 반환하기
-        // 힌트: subList(0, limit) 사용
+        //       1순위: 발화 건수 오름차순 (s1.getCount() - s2.getCount())
+        //       2순위: 이름 오름차순 (s1.getSpeakerName().compareTo(s2.getSpeakerName()))
+
+
+        // TODO 4.Top-K 유지
+        // 힌트:  발화자 통계(SpeakerStat)를 하나씩 PriorityQueue에 넣음
+        //       넣을 때마다 큐의 크기를 확인
+        //       만약 size가 limit보다 커지면 poll()을 호출
+        //
+        //   → 이 과정을 거치면 큐에는 항상 상위 K명의 발화자만 남게 됩니다
+                
+        // TODO 5. 결과 꺼내기
+        // 힌트:  PriorityQueue에서 poll()을 사용해 하나씩 꺼냄
+        //      이 List에는 이미 Top-K 발화자만 들어 있음
+        //      추가 정렬은 필수가 아닙니다!!
     }
 }
 ```
@@ -319,22 +362,26 @@ public class AnalysisService {
 - **Map 사용 이유**: 발화자 이름을 키로 사용해서 같은 발화자의 통계를 모을 수 있어요
 - **HashMap**: 키-값 쌍을 저장하는 자료구조. `containsKey()`, `get()`, `put()` 메서드 사용
 - **values()**: Map의 모든 값들을 가져오는 메서드
-- **Collections.sort()**: 리스트를 정렬하는 메서드. Comparator로 정렬 기준 정의
-- **내림차순**: `s2 - s1` 또는 `s2.compareTo(s1)` (큰 값이 앞에 옴)
-- **오름차순**: `s1 - s2` 또는 `s1.compareTo(s2)` (작은 값이 앞에 옴)
+- **내림차순**: `s2.getCount() - s1.getCount()` (큰 값이 앞에 옴)
+- **오름차순**: `s1.getSpeakerName().compareTo(s2.getSpeakerName())` (작은 값이 앞에 옴, 가나다순)
 
-#### 4단계: Controller에 추가
+#### 5단계: Controller에 추가
 
 ```java
 // MeetingController.java에 추가
 @Autowired
 private AnalysisService analysisService;
 
+@Operation(summary = "2번: 회의 발화자 Top-K 조회")
 @GetMapping("/{meetingId}/speakers")
-public List<SpeakerStat> getTopSpeakers(
+public ResponseEntity<List<SpeakerStat>> getTopSpeakers(
         @PathVariable int meetingId,
-        @RequestParam(defaultValue = "3") int limit) {
-    return analysisService.getTopSpeakers(meetingId, limit);
+        @RequestParam(defaultValue = "3") int limit
+) {
+    List<SpeakerStat> response =
+            analysisService.getTopSpeakers(meetingId, limit);
+
+    return ResponseEntity.ok(response);
 }
 ```
 
@@ -372,44 +419,55 @@ public class KeywordStat {
 
 ```java
 public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
-    // 1단계: 발화 데이터 모두 가져오기
+    // TODO: 1. 발화 데이터 모두 가져오기
     // 힌트: meetingMapper.findUtterancesByMeetingId() 사용
     
-    // 2단계: 모든 발화 텍스트를 합치기
+    // TODO: 2. 모든 발화 텍스트를 합치기
     // 힌트: StringBuilder 사용, for문으로 텍스트를 append()
+    StringBuilder sb = new StringBuilder();
+    for (UtteranceInfo u : utterances) {
+        sb.append(u.getText()).append(" ");
+    }
     
-    // 3단계: 특수문자 제거하기
+    // TODO: 3. 특수문자 제거하기
     // 힌트: replaceAll("[.,!?:;()\\[\\]{}'\"]", " ") 사용
+    // 위의 sb를 String으로 만드신 다음에 replace 사용하시면 됩니다!
+    // ex) sb.toString().replaceAll ...
     
-    // 4단계: 공백 기준으로 단어 분리하기
+    // TODO: 4. 공백 기준으로 단어 분리하기
     // 힌트: split("\\s+") 사용
+    // 위의 특수문자를 제거한 문자열에 split("\\s+")를 해주시면 단어가 분리됩니다!
+    String[] words = {특수문자제거문자열}.split("\\s+");
+    // split()의 리턴 타입이 원래 String[]이기 때문에 List<>로 사용하지 않고 그냥 String[]을 사용하였습니다.
+    // 추가로 공부해보아도 좋을 것 같아요~~
     
-    // 5단계: 불용어 목록 만들기
+    // TODO: 5. 불용어 목록 만들기
     // 힌트: Set<String> stopWords = new HashSet<>() 사용
     //       불용어: "진짜", "약간", "아마", "그리고", "하지만", "그래서", "저는", "제가"
     
-    // 6단계: HashMap으로 키워드별 빈도 계산하기
+    // TODO: 6. HashMap으로 키워드별 빈도 계산하기
     // 힌트: Map<String, Integer> keywordMap = new HashMap<>();
     //       for문으로 단어를 순회하면서:
     //       - 길이 2자 이상인지 체크 (length() < 2면 continue)
     //       - 불용어인지 체크 (stopWords.contains()면 continue)
-    //       - 빈도수 증가 (getOrDefault() 사용)
+    //       - 빈도수 증가 (Map에서 해당 키의 count값(value)을 받아와서, put해줄때 count+1을 하면 되겠죠? 혹은 SpeakStat처럼 클래스 내부 메서드로 구현해도 좋아요~)
     
-    // 7단계: PriorityQueue로 Top-K 추출하기 (핵심!)
+    // TODO: 7. PriorityQueue로 Top-K 추출하기 (핵심!)
     // 힌트: PriorityQueue<Map.Entry<String, Integer>> pq = new PriorityQueue<>(comparator);
     //       Comparator 만들기:
-    //       1순위: 빈도수 내림차순 (e2.getValue() - e1.getValue())
+    //       1순위: 빈도수 오름차순 (e2.getValue() - e1.getValue())
+    //       왜 오름차순으로 해야하는지 생각해보면 좋습니다!!!
     //       2순위: 키워드 사전순 오름차순 (e1.getKey().compareTo(e2.getKey()))
     
-    // 8단계: 모든 키워드를 큐에 추가하면서 크기 제한하기
+    // TODO: 8. 모든 키워드를 큐에 추가하면서 크기 제한하기
     // 힌트: for문으로 keywordMap.entrySet() 순회
     //       - pq.offer(entry)로 추가
     //       - if (pq.size() > limit) pq.poll()로 가장 작은 것 제거
     
-    // 9단계: 결과를 List로 변환하기
+    // TODO: 9. 결과를 List로 변환하기
     // 힌트: while (!pq.isEmpty())로 poll()해서 List에 추가
     
-    // 10단계: 역순으로 정렬 (빈도수 높은 것부터)
+    // TODO: 10. 내람차순으로 정렬 (빈도수 높은 것부터, 필수아님~)
     // 힌트: Collections.reverse() 사용
 }
 ```
@@ -447,7 +505,6 @@ public List<KeywordStat> getTopKeywords(
 
 1. **Mapper에서 ORDER BY 사용 금지**: 모든 정렬은 Java에서 해야 합니다!
 2. **GROUP BY 사용 금지**: 집계도 Java에서 해야 합니다!
-3. **API 3번은 반드시 PriorityQueue 사용**
 4. **예외 처리**: 회의가 없을 때 적절한 예외를 던져야 합니다
 5. **null 체크**: 데이터가 없을 때를 대비해서 null 체크를 해야 합니다
 
@@ -465,6 +522,9 @@ work.meeting
 ├── mapper
 │   ├── MeetingMapper.java
 │   └── MeetingMapper.xml (실제는 resource에 있지만 표현상 여기 적어두었습니다.)
+├── util/Comparator
+│   ├── SpeakerStatComparator.java (발화자 정렬)
+│   └── KeywordEntryComparator.java (키워드 정렬)
 └── model
     ├── MeetingInfoRes.java
     ├── ...
@@ -475,12 +535,12 @@ work.meeting
 
 ### 🎯 평가 포인트
 
-#### 필수 구현 항목 (기본 점수)
+#### 필수 구현 항목
 1. **API 1번**: 회의 기본 정보 조회 및 공유 사용자 수 계산
-2. **API 2번**: 발화자 Top-K 분석 (일반 정렬 사용)
+2. **API 2번**: 발화자 Top-K 분석 (우선순위 큐 사용)
 3. **API 3번**: 키워드 Top-K 분석 (우선순위 큐 사용)
 
-#### 추가 평가 포인트 (가산 점수)
+#### 추가 평가 포인트
 1. **우선순위 큐 활용**: API 3번에서 `PriorityQueue`를 정확히 활용하여 Top-K 문제를 효율적으로 해결했는가?
 2. **복합 정렬 구현**: `Comparator` 또는 `Comparable`을 사용하여 여러 정렬 조건을 실수 없이 구현했는가?
 3. **코드 클린도**: Service 레이어의 로직이 가독성 있게 분리되었으며, 적절한 자료구조를 사용했는가?
