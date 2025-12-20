@@ -32,43 +32,45 @@ public class MeetingReportService {
 
     public List<SpeakerStat> getTopSpeakers(int meetingId, int limit) {
 
-        // 1. 발화 데이터 모두 조회
+        // 1. 발화 데이터 조회
         List<UtteranceInfo> utterances =
                 meetingMapper.findUtterancesByMeetingId(meetingId);
 
-        // 2. 발화자별 통계 집계
+        // 2. 발화자별 집계
         Map<String, SpeakerStat> speakerMap = new HashMap<>();
 
         for (UtteranceInfo utterance : utterances) {
             String speakerName = utterance.getSpeakerName();
 
-            // Map에 없으면 새로 생성
             if (!speakerMap.containsKey(speakerName)) {
                 speakerMap.put(speakerName, new SpeakerStat(speakerName));
             }
 
-            SpeakerStat stat = speakerMap.get(speakerName);
-
-            // 발화 건수 증가
-            stat.addCount();
+            speakerMap.get(speakerName).addCount();
         }
 
-        // 3. Map -> List 변환
-        List<SpeakerStat> speakerList =
-                new ArrayList<>(speakerMap.values());
+        // 3. PriorityQueue 생성 (⭐ 핵심)
+        PriorityQueue<SpeakerStat> pq =
+                new PriorityQueue<>(new SpeakerStatComparator());
 
-        // 4단계: 정렬 (복합 기준)
-        Collections.sort(
-                speakerList,
-                new SpeakerStatComparator()
-        );
+        // 4. Top-K 유지
+        for (SpeakerStat stat : speakerMap.values()) {
+            pq.offer(stat);
 
-        // 5. 상위 limit 개만 반환
-        if (speakerList.size() > limit) {
-            return speakerList.subList(0, limit);
+            // K개 초과하면 가장 약한 놈 제거
+            if (pq.size() > limit) {
+                pq.poll();
+            }
         }
 
-        return speakerList;
+        // 5. 결과 꺼내기
+        List<SpeakerStat> result = new ArrayList<>();
+
+        while (!pq.isEmpty()) {
+            result.add(pq.poll());
+        }
+
+        return result;
     }
 
 
@@ -109,8 +111,12 @@ public class MeetingReportService {
             if (word.length() < 2) continue;
             if (stopWords.contains(word)) continue;
 
-            keywordMap.put(word,
-                           keywordMap.getOrDefault(word, 0) + 1);
+            if (keywordMap.containsKey(word)) {
+                int count = keywordMap.get(word);
+                keywordMap.put(word, count + 1);
+            } else {
+                keywordMap.put(word, 1);
+            }
         }
 
         // 7. PriorityQueue로 Top-K 추출하기
