@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.nova.work.meeting.mapper.MeetingMapper">
+
+    <!-- 회의 이름 조회 -->
+    <select id="selectMeetingName" resultType="string">
+        SELECT NAME
+        FROM T_MEETING_BASE
+        WHERE ID = #{meetingId}
+    </select>
+
+</mapper>
