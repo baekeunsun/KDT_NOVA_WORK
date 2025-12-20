@@ -56,4 +56,4 @@ vcs.xml
 *.log
 
 # Application config
-src/main/resources/application*.yml
+#src/main/resources/application*.yml
