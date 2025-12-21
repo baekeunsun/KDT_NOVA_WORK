@@ -37,8 +37,19 @@
 회의 상세 화면 진입 시 사용되는 기본 정보와 공유받은 사용자의 수를 조회합니다.
 
 * **사용 테이블**: `T_MEETING_BASE`, `T_MEETING_VIEWER_MAP`
-* **구현 내용**: 회의 ID 기준 정보 조회 및 공유받은 사용자의 수 계산(COUNT SQL 허용).
-* **예외 처리**: 회의가 존재하지 않을 경우 적절한 Custom Exception 처리.
+* **구현 내용**:
+  * 회의 ID 기준으로 회의 기본 정보 조회
+  * 해당 회의를 공유받은 사용자 수를 COUNT 쿼리로 계산
+* **필수 응답 값**:
+  * 회의 ID
+  * 회의 이름
+  * 참석자 리스트
+  * 시작 시간
+  * 종료 시간
+  * 생성자 ID
+  * 공유된 사용자 수
+* **예외 처리**:
+  * 회의가 존재하지 않을 경우 예외 발생 (`IllegalArgumentException` 등 사용)
 
 #### 2️⃣ 회의 발화자 Top-K 조회 API (`GET /work/meeting/{meetingId}/speakers`)
 
@@ -276,8 +287,8 @@ public class UtteranceInfo {
 <select id="findUtterancesByMeetingId" resultType="work.meeting.model.UtteranceInfo">
     <!-- TODO: T_MEETING_UTTERANCE_INFO 테이블에서 발화 데이터 조회
          힌트:
-         - SELECT로 필요한 컬럼 조회 (ID, MEETING_ID, IDX, SPEAKER_LABEL, SPEAKER_NAME, TEXT, START_DTIME, END_DTIME)
-         - WHERE 절로 MEETING_ID = #{meetingId} 조건 추가
+         - SELECT로 필요한 컬럼 조회
+         - WHERE 절로 조건 추가
          - ⚠️ 주의: ORDER BY를 쓰지 않습니다! Java에서 정렬할 거예요
     -->
 </select>
@@ -320,7 +331,35 @@ public class SpeakerStat {
 
 #### 3단계: 발화자 정렬 기준(Comparator) 만들기
 
-#### 3단계: Service에서 집계하기
+```java
+// SpeakerStatComparator.java
+package work.meeting.model;
+
+import java.util.Comparator;
+
+public class SpeakerStatComparator implements Comparator<SpeakerStat> {
+
+    @Override
+    public int compare(SpeakerStat s1, SpeakerStat s2) {
+        // 힌트
+        // compare() 메서드 안에서 if문으로 순서대로 비교하면 됨
+        // 이 단계에서는 정렬을 실행하지 않음, 기준만 정의하면 됨
+        // 우선순위가 높은 것들이 먼저 나간다(poll)는 사실을 생각해보세요!
+        
+        // TODO: 1. 정렬 1순위 : 발화 건수 오름차순
+        
+        // TODO: 2. 정렬 2순위 : 발화자 이름 내림차순
+    }
+}
+```
+
+**설명**:
+- SpeakerStat 객체를 어떤 기준으로 정렬할지 정의하는 클래스
+- 자바는 우리가 만든 객체를 자동으로 비교하지 못하므로, 정렬 기준을 직접 알려줘야 함
+- 이 Comparator는 이후 Service에서 Collections.sort()에 사용됨
+
+
+#### 4단계: Service에서 집계하기
 
 ```java
 @Service
@@ -357,12 +396,21 @@ public class AnalysisService {
         // TODO 3. PriorityQueue 생성 (⭐ 핵심)
         // 힌트: 
         //       Comparator를 만들어서:
-        //       1순위: 발화 건수 내림차순 (s2.getCount() - s1.getCount())
-        //       2순위: 발화 시간 내림차순 (Float.compare() 사용)
-        //       3순위: 이름 오름차순 (compareTo() 사용)
-        
-        // 5단계: 상위 limit 개만 반환하기
-        // 힌트: subList(0, limit) 사용
+        //       1순위: 발화 건수 오름차순 (s1.getCount() - s2.getCount())
+        //       2순위: 이름 내림차순 (s2.getSpeakerName().compareTo(s1.getSpeakerName()))
+
+
+        // TODO 4.Top-K 유지
+        // 힌트:  발화자 통계(SpeakerStat)를 하나씩 PriorityQueue에 넣음
+        //       넣을 때마다 큐의 크기를 확인
+        //       만약 size가 limit보다 커지면 poll()을 호출
+        //
+        //   → 이 과정을 거치면 큐에는 항상 상위 K명의 발화자만 남게 됩니다
+                
+        // TODO 5. 결과 꺼내기
+        // 힌트:  PriorityQueue에서 poll()을 사용해 하나씩 꺼냄
+        //      이 List에는 이미 Top-K 발화자만 들어 있음
+        //      추가 정렬은 필수가 아닙니다!!
     }
 }
 ```
@@ -371,9 +419,8 @@ public class AnalysisService {
 - **Map 사용 이유**: 발화자 이름을 키로 사용해서 같은 발화자의 통계를 모을 수 있어요
 - **HashMap**: 키-값 쌍을 저장하는 자료구조. `containsKey()`, `get()`, `put()` 메서드 사용
 - **values()**: Map의 모든 값들을 가져오는 메서드
-- **Collections.sort()**: 리스트를 정렬하는 메서드. Comparator로 정렬 기준 정의
-- **내림차순**: `s2 - s1` 또는 `s2.compareTo(s1)` (큰 값이 앞에 옴)
-- **오름차순**: `s1 - s2` 또는 `s1.compareTo(s2)` (작은 값이 앞에 옴)
+- **오름차순**: `s1.getCount() - s2.getCount()` (작은 값이 우선순위가 높아짐)
+- **내림차순**: `s2.getSpeakerName().compareTo(s1.getSpeakerName())` (큰 값이 우선순위가 높아짐)
 
 #### 5단계: Controller에 추가
 
@@ -386,8 +433,12 @@ private MeetingReportService meetingReportService;
 @GetMapping("/{meetingId}/speakers")
 public ResponseEntity<List<SpeakerStat>> getTopSpeakers(
         @PathVariable int meetingId,
-        @RequestParam(defaultValue = "3") int limit) {
-    return analysisService.getTopSpeakers(meetingId, limit);
+        @RequestParam(defaultValue = "3") int limit
+) {
+    List<SpeakerStat> response =
+            meetingReportService.getTopSpeakers(meetingId, limit);
+
+    return ResponseEntity.ok(response);
 }
 ```
 
@@ -461,8 +512,10 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
     // TODO: 7. PriorityQueue로 Top-K 추출하기 (핵심!)
     // 힌트: PriorityQueue<Map.Entry<String, Integer>> pq = new PriorityQueue<>(comparator);
     //       Comparator 만들기:
-    //       1순위: 빈도수 내림차순 (e2.getValue() - e1.getValue())
-    //       2순위: 키워드 사전순 오름차순 (e1.getKey().compareTo(e2.getKey()))
+    //       1순위: 빈도수 오름차순 (e2.getValue() - e1.getValue())
+    //       왜 오름차순으로 해야하는지 생각해보면 좋습니다!!!
+    //       2순위: 키워드 사전순 내림차순 (e2.getKey().compareTo(e1.getKey()))
+    //       왜 내림차순으로 해야하는지 생각해보면 좋습니다!!!
     
     // TODO: 8. 모든 키워드를 큐에 추가하면서 크기 제한하기
     // 힌트: for문으로 keywordMap.entrySet() 순회
@@ -541,17 +594,3 @@ work.meeting
 
 ```
 
----
-
-### 🎯 평가 포인트
-
-#### 필수 구현 항목 (기본 점수)
-1. **API 1번**: 회의 기본 정보 조회 및 공유 사용자 수 계산
-2. **API 2번**: 발화자 Top-K 분석 (일반 정렬 사용)
-3. **API 3번**: 키워드 Top-K 분석 (우선순위 큐 사용)
-
-#### 추가 평가 포인트 (가산 점수)
-1. **우선순위 큐 활용**: API 3번에서 `PriorityQueue`를 정확히 활용하여 Top-K 문제를 효율적으로 해결했는가?
-2. **복합 정렬 구현**: `Comparator` 또는 `Comparable`을 사용하여 여러 정렬 조건을 실수 없이 구현했는가?
-3. **코드 클린도**: Service 레이어의 로직이 가독성 있게 분리되었으며, 적절한 자료구조를 사용했는가?
-4. **예외 처리**: 회의가 존재하지 않을 경우 적절한 예외 처리를 구현했는가?
