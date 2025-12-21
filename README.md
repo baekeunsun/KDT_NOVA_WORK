@@ -37,21 +37,70 @@
 회의 상세 화면 진입 시 사용되는 기본 정보와 공유받은 사용자의 수를 조회합니다.
 
 * **사용 테이블**: `T_MEETING_BASE`, `T_MEETING_VIEWER_MAP`
-* **구현 내용**: 회의 ID 기준 정보 조회 및 공유받은 사용자의 수 계산(COUNT SQL 허용),
-* 필수로 보여야하는 값은 회의아이디, 회의 이름, 참석자리스트, 시작시간, 종료시간, 생성자, 공유된 사용자 수
-* **예외 처리**: 회의가 존재하지 않을 경우 적절한 Custom Exception 처리.
+* **구현 내용**:
+  * 회의 ID 기준으로 회의 기본 정보 조회
+  * 해당 회의를 공유받은 사용자 수를 COUNT 쿼리로 계산
+* **필수 응답 값**:
+  * 회의 ID
+  * 회의 이름
+  * 참석자 리스트
+  * 시작 시간
+  * 종료 시간
+  * 생성자 ID
+  * 공유된 사용자 수
+* **예외 처리**:
+  * 회의가 존재하지 않을 경우 예외 발생 (`IllegalArgumentException` 등 사용)
 
 #### 2️⃣ 회의 발화자 Top-K 조회 API (`GET /work/meeting/{meetingId}/speakers`)
 
 회의 내 발화 데이터를 분석하여 상위 발화자를 추출합니다.
 
+* **사용 테이블**: `T_MEETING_UTTERANCE_INFO`
 * **Query Parameter**: `limit` (상위 발화자 수, 기본값: 3)
+* **구현 내용**:
+  * 회의 ID 기준으로 모든 발화 데이터 조회
+  * 발화자 이름을 기준으로 발화 횟수 집계
+  * 발화 횟수를 기준으로 상위 발화자 추출
+  * 우선순위 큐(PriorityQueue)를 활용하여 Top-K 발화자 유지
+* **정렬 기준**:
+  * 1순위: 발화 건수 내림차순
+  * 2순위: 발화자 이름 오름차순
 
 #### 3️⃣ 회의 키워드 Top-K 조회 API (`GET /work/meeting/{meetingId}/keywords`)
 
 회의 내 발화 텍스트에서 상위 키워드를 추출합니다.
 
+* **사용 테이블**: `T_MEETING_UTTERANCE_INFO`
 * **Query Parameter**: `limit` (상위 키워드 수, 기본값: 5)
+* **구현 내용**:
+  * 회의 ID 기준으로 모든 발화 텍스트 조회
+  * 발화 텍스트 전처리 후 키워드 빈도 분석
+    * 특수문자 제거 후 분석  
+      (제거 대상 예시: `. , ! ? : ; ( ) [ ] { } ' "`)
+    * 공백 기준으로 단어 분리
+    * 의미 없는 단어(불용어)는 분석 대상에서 제외  
+      (불용어 예시: `"진짜"`, `"약간"`, `"아마"`, `"그리고"`, `"하지만"`, `"그래서"`, `"저는"`, `"제가"`)
+    * 길이가 1자인 단어는 제외
+  * 키워드별 등장 빈도 집계
+  * 우선순위 큐(PriorityQueue)를 활용하여 상위 `limit`개의 키워드 추출
+* **정렬 기준**:
+  * 1순위: 키워드 등장 빈도 내림차순
+  * 2순위: 키워드 오름차순
+
+---
+
+### 🎯 평가 포인트
+
+1. **우선순위 큐 활용**: API 3번에서 `PriorityQueue`를 정확히 활용하여 Top-K 문제를 효율적으로 해결했는가?
+2. **복합 정렬 구현**: `Comparator` 또는 `Comparable`을 사용하여 여러 정렬 조건을 실수 없이 구현했는가?
+3. **코드 클린도**: Service 레이어의 로직이 가독성 있게 분리되었으며, 적절한 자료구조를 사용했는가?
+4. **예외 처리**: 회의가 존재하지 않을 경우 적절한 예외 처리를 구현했는가?
+
+### 📝 구현 난이도 안내
+
+* **API 1번**: ⭐⭐ (기본 조회, COUNT 쿼리)
+* **API 2번**: ⭐⭐⭐ (집계 + 일반 정렬)
+* **API 3번**: ⭐⭐⭐⭐ (문자열 처리 + 우선순위 큐)
 
 ---
 
@@ -103,8 +152,8 @@ public interface MeetingMapper {
     <select id="findById" resultType="work.meeting.model.MeetingBase">
         <!-- TODO: T_MEETING_BASE 테이블에서 회의 정보 조회
              힌트: 
-             - SELECT로 필요한 컬럼 조회 (ID, NAME, STATUS, ATTENDEE_LIST, AUDIO_URL, CRT_DTIME, END_DTIME, CRT_ID)
-             - WHERE 절로 ID = #{meetingId} 조건 추가
+             - SELECT로 필요한 컬럼 조회
+             - WHERE 절로 조건 추가
         -->
     </select>
     
@@ -113,7 +162,7 @@ public interface MeetingMapper {
         <!-- TODO: T_MEETING_VIEWER_MAP 테이블에서 사용자 수 세기
              힌트:
              - SELECT COUNT(*) 사용
-             - WHERE 절로 MEETING_ID = #{meetingId} 조건 추가
+             - WHERE 절로 조건 추가
         -->
     </select>
 </mapper>
@@ -125,7 +174,7 @@ public interface MeetingMapper {
 - `#{meetingId}`: 파라미터로 전달받은 값 사용 (인터페이스의 `@Param("meetingId")`와 매칭)
 - `id`: 인터페이스의 메서드 이름과 일치해야 함
 
-#### 3단계: DTO 클래스 만들기
+#### 3단계: DTO 클래스(응답 클래스) 만들기
 
 ```java
 // MeetingInfoRes.java
@@ -187,10 +236,14 @@ public class MeetingController {
     
     @Autowired
     private MeetingService meetingService;
-    
+
+    @Operation(summary = "1번: 회의 기본 정보 조회")
     @GetMapping("/{meetingId}")
-    public MeetingInfoRes getMeetingInfo(@PathVariable int meetingId) {
-        return meetingService.getMeetingInfo(meetingId);
+    public ResponseEntity<MeetingInfoRes> getMeetingInfo(
+            @PathVariable int meetingId
+    ) {
+        MeetingInfoRes response = meetingService.getMeetingInfo(meetingId);
+        return ResponseEntity.ok(response);
     }
 }
 ```
@@ -198,7 +251,10 @@ public class MeetingController {
 **설명**:
 - `@RestController`: REST API 컨트롤러로 인식
 - `@RequestMapping`: 기본 경로 설정
+- `@Operation`: Swagger 문서에 노출되는 API 설명
 - `@GetMapping("/{meetingId}")`: GET 요청 처리, 경로 변수 사용
+- `ResponseEntity<T>`: HTTP 응답을 명확하게 표현
+  → 상태 코드 + 응답 바디를 함께 다룰 수 있음
 - `@PathVariable`: URL 경로에서 변수 추출
 
 ---
@@ -207,7 +263,7 @@ public class MeetingController {
 
 ### 단계별 구현 가이드
 
-#### 1단계: 발화 데이터 조회용 Mapper 추가
+#### 1단계: 발화 데이터 조회용 Mapper 및 VO(발화 데이터 정보 클래스) 추가
 
 ```java
 // MeetingMapper.java에 추가
@@ -231,8 +287,8 @@ public class UtteranceInfo {
 <select id="findUtterancesByMeetingId" resultType="work.meeting.model.UtteranceInfo">
     <!-- TODO: T_MEETING_UTTERANCE_INFO 테이블에서 발화 데이터 조회
          힌트:
-         - SELECT로 필요한 컬럼 조회 (ID, MEETING_ID, IDX, SPEAKER_LABEL, SPEAKER_NAME, TEXT)
-         - WHERE 절로 MEETING_ID = #{meetingId} 조건 추가
+         - SELECT로 필요한 컬럼 조회
+         - WHERE 절로 조건 추가
          - ⚠️ 주의: ORDER BY를 쓰지 않습니다! Java에서 정렬할 거예요
     -->
 </select>
@@ -362,8 +418,7 @@ public class AnalysisService {
 - **Map 사용 이유**: 발화자 이름을 키로 사용해서 같은 발화자의 통계를 모을 수 있어요
 - **HashMap**: 키-값 쌍을 저장하는 자료구조. `containsKey()`, `get()`, `put()` 메서드 사용
 - **values()**: Map의 모든 값들을 가져오는 메서드
-- **내림차순**: `s2.getCount() - s1.getCount()` (큰 값이 앞에 옴)
-- **오름차순**: `s1.getSpeakerName().compareTo(s2.getSpeakerName())` (작은 값이 앞에 옴, 가나다순)
+- **오름차순**: `s1.getSpeakerName().compareTo(s2.getSpeakerName())` (작은 값이 앞에 옴)
 
 #### 5단계: Controller에 추가
 
@@ -531,23 +586,3 @@ work.meeting
 
 ```
 
----
-
-### 🎯 평가 포인트
-
-#### 필수 구현 항목
-1. **API 1번**: 회의 기본 정보 조회 및 공유 사용자 수 계산
-2. **API 2번**: 발화자 Top-K 분석 (우선순위 큐 사용)
-3. **API 3번**: 키워드 Top-K 분석 (우선순위 큐 사용)
-
-#### 추가 평가 포인트
-1. **우선순위 큐 활용**: API 3번에서 `PriorityQueue`를 정확히 활용하여 Top-K 문제를 효율적으로 해결했는가?
-2. **복합 정렬 구현**: `Comparator` 또는 `Comparable`을 사용하여 여러 정렬 조건을 실수 없이 구현했는가?
-3. **코드 클린도**: Service 레이어의 로직이 가독성 있게 분리되었으며, 적절한 자료구조를 사용했는가?
-4. **예외 처리**: 회의가 존재하지 않을 경우 적절한 예외 처리를 구현했는가?
-
-### 📝 구현 난이도 안내
-
-* **API 1번**: ⭐⭐ (기본 조회, COUNT 쿼리)
-* **API 2번**: ⭐⭐⭐ (집계 + 일반 정렬)
-* **API 3번**: ⭐⭐⭐⭐ (문자열 처리 + 우선순위 큐)
