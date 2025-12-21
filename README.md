@@ -427,7 +427,7 @@ public class AnalysisService {
 ```java
 // MeetingController.java에 추가
 @Autowired
-private AnalysisService analysisService;
+private MeetingReportService meetingReportService;
 
 @Operation(summary = "2번: 회의 발화자 Top-K 조회")
 @GetMapping("/{meetingId}/speakers")
@@ -436,7 +436,7 @@ public ResponseEntity<List<SpeakerStat>> getTopSpeakers(
         @RequestParam(defaultValue = "3") int limit
 ) {
     List<SpeakerStat> response =
-            analysisService.getTopSpeakers(meetingId, limit);
+            meetingReportService.getTopSpeakers(meetingId, limit);
 
     return ResponseEntity.ok(response);
 }
@@ -549,11 +549,16 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
 
 ```java
 // MeetingController.java에 추가
+@Operation(summary = "3번 : 회의 키워드 Top-K 조회")
 @GetMapping("/{meetingId}/keywords")
-public List<KeywordStat> getTopKeywords(
+public ResponseEntity<List<KeywordStat>> getTopKeywords(
         @PathVariable int meetingId,
-        @RequestParam(defaultValue = "5") int limit) {
-    return analysisService.getTopKeywords(meetingId, limit);
+        @RequestParam(defaultValue = "5") int limit
+) {
+  List<KeywordStat> result =
+          meetingReportService.getTopKeywords(meetingId, limit);
+
+  return ResponseEntity.ok(result);
 }
 ```
 
