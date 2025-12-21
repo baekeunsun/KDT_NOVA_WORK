@@ -14,7 +14,7 @@ public class KeywordEntryComparator implements Comparator<Map.Entry<String, Inte
             return e1.getValue() - e2.getValue();
         }
 
-        // 2순위: 키워드 오름차순
-        return e1.getKey().compareTo(e2.getKey());
+        // 2순위: 키워드 내림차순 (사전상 뒤에 있는 키워드가 먼저 나가게)
+        return e2.getKey().compareTo(e1.getKey());
     }
 }
