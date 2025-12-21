@@ -2,7 +2,7 @@
 
 ### 📌 과제 목적
 
-본 과제는 **'이로기(work 모듈)'**의 실제 도메인을 기반으로, 회의 종료 후 관리자/사용자에게 제공되는 **회의 발화 분석 리포트 API**를 구현하는 것이 목적입니다.
+본 과제는 **'이로기(work 모듈)'** 의 실제 도메인을 기반으로, 회의 종료 후 관리자/사용자에게 제공되는 **회의 발화 분석 리포트 API**를 구현하는 것이 목적입니다.
 
 단순한 기능 구현을 넘어, 수업 시간에 학습한 **우선순위 큐(Priority Queue)와 힙(Heap)** 자료구조를 활용하여 대량의 발화 데이터에서 상위 K개의 유의미한 정보를 효율적으로 추출하는 능력을 종합적으로 연습합니다.
 
@@ -15,7 +15,6 @@
 * Mapper(XML) 내에서의 **집계(GROUP BY) 및 정렬(ORDER BY)은 절대 금지**합니다.
 * 모든 통계 및 정렬 로직은 **Java Service 레이어**에서 직접 구현해야 합니다.
 * 컴파일 오류 또는 실행 불가 상태는 오답 처리됩니다.
-* **API 3번은 반드시 `PriorityQueue`를 사용해야 합니다.**
 
 
 
@@ -26,7 +25,7 @@
 * **Language**: Java 11 이상
 * **Framework**: Spring Boot
 * **DB/ORM**: MyBatis (Mapper Interface + XML)
-* **계층 구조**: Controller / Service / Mapper / DTO 전체 구현
+* **계층 구조**: Controller / Service / Mapper / Model 전체 구현
 
 ---
 
@@ -116,8 +115,6 @@
 
 ```java
 // MeetingMapper.java
-package work.meeting.mapper;
-
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import work.meeting.model.MeetingBase;
@@ -178,8 +175,6 @@ public interface MeetingMapper {
 
 ```java
 // MeetingInfoRes.java
-package work.meeting.model;
-
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -267,6 +262,7 @@ public class MeetingController {
 
 ```java
 // MeetingMapper.java에 추가
+// 발화 데이터 조회
 List<UtteranceInfo> findUtterancesByMeetingId(@Param("meetingId") int meetingId);
 ```
 
@@ -284,6 +280,7 @@ public class UtteranceInfo {
 
 ```xml
 <!-- MeetingMapper.xml에 추가 -->
+<!-- 발화 데이터 조회 -->
 <select id="findUtterancesByMeetingId" resultType="work.meeting.model.UtteranceInfo">
     <!-- TODO: T_MEETING_UTTERANCE_INFO 테이블에서 발화 데이터 조회
          힌트:
@@ -302,8 +299,6 @@ public class UtteranceInfo {
 
 ```java
 // SpeakerStat.java
-package work.meeting.model;
-
 import lombok.Data;
 
 @Data
@@ -333,8 +328,6 @@ public class SpeakerStat {
 
 ```java
 // SpeakerStatComparator.java
-package work.meeting.model;
-
 import java.util.Comparator;
 
 public class SpeakerStatComparator implements Comparator<SpeakerStat> {
@@ -525,7 +518,7 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
     // TODO: 9. 결과를 List로 변환하기
     // 힌트: while (!pq.isEmpty())로 poll()해서 List에 추가
     
-    // TODO: 10. 내람차순으로 정렬 (빈도수 높은 것부터, 필수아님~)
+    // TODO: 10. 내람차순으로 정렬 (빈도수 높은 것부터, 추가정렬은 필수아닙니다!)
     // 힌트: Collections.reverse() 사용
 }
 ```
