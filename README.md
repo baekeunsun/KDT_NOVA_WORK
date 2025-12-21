@@ -344,10 +344,11 @@ public class SpeakerStatComparator implements Comparator<SpeakerStat> {
         // 힌트
         // compare() 메서드 안에서 if문으로 순서대로 비교하면 됨
         // 이 단계에서는 정렬을 실행하지 않음, 기준만 정의하면 됨
+        // 우선순위가 높은 것들이 먼저 나간다(poll)는 사실을 생각해보세요!
         
         // TODO: 1. 정렬 1순위 : 발화 건수 오름차순
         
-        // TODO: 2. 정렬 2순위 : 발화자 이름 오름차순
+        // TODO: 2. 정렬 2순위 : 발화자 이름 내림차순
     }
 }
 ```
@@ -396,7 +397,7 @@ public class AnalysisService {
         // 힌트: 
         //       Comparator를 만들어서:
         //       1순위: 발화 건수 오름차순 (s1.getCount() - s2.getCount())
-        //       2순위: 이름 오름차순 (s1.getSpeakerName().compareTo(s2.getSpeakerName()))
+        //       2순위: 이름 내림차순 (s2.getSpeakerName().compareTo(s1.getSpeakerName()))
 
 
         // TODO 4.Top-K 유지
@@ -418,7 +419,8 @@ public class AnalysisService {
 - **Map 사용 이유**: 발화자 이름을 키로 사용해서 같은 발화자의 통계를 모을 수 있어요
 - **HashMap**: 키-값 쌍을 저장하는 자료구조. `containsKey()`, `get()`, `put()` 메서드 사용
 - **values()**: Map의 모든 값들을 가져오는 메서드
-- **오름차순**: `s1.getSpeakerName().compareTo(s2.getSpeakerName())` (작은 값이 앞에 옴)
+- **오름차순**: `s1.getCount() - s2.getCount()` (작은 값이 우선순위가 높아짐)
+- **내림차순**: `s2.getSpeakerName().compareTo(s1.getSpeakerName())` (큰 값이 우선순위가 높아짐)
 
 #### 5단계: Controller에 추가
 
@@ -512,7 +514,8 @@ public List<KeywordStat> getTopKeywords(int meetingId, int limit) {
     //       Comparator 만들기:
     //       1순위: 빈도수 오름차순 (e2.getValue() - e1.getValue())
     //       왜 오름차순으로 해야하는지 생각해보면 좋습니다!!!
-    //       2순위: 키워드 사전순 오름차순 (e1.getKey().compareTo(e2.getKey()))
+    //       2순위: 키워드 사전순 내림차순 (e2.getKey().compareTo(e1.getKey()))
+    //       왜 내림차순으로 해야하는지 생각해보면 좋습니다!!!
     
     // TODO: 8. 모든 키워드를 큐에 추가하면서 크기 제한하기
     // 힌트: for문으로 keywordMap.entrySet() 순회
